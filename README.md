@@ -1,4 +1,2 @@
-# handwritten-Vue-source-code
-手写vue源码
-## 功能实现
-  初步实现响应式原理、computed和watch
+# Vue源码学习
+此版本是第一版  只是用简单的代码初步实现了响应式原理、computed和watch
