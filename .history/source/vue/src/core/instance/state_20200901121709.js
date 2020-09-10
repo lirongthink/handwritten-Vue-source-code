@@ -1,30 +1,50 @@
-import { observe } from "./observe/index";
-import { proxy } from "./utils";
-import Watcher from "./observe/watcher";
-import Dep from "./observe/dep";
+import { observe, defineReactive } from "../observer/index";
+import { proxy } from "../utils";
+import Watcher from "../observer/watcher";
+import Dep from "../observer/dep";
+
+export function proxy(vm,source,key) { //代理数据  vm.msg = vm._data.msg
+  Object.defineProperty(vm,key,{
+    get(){
+      return vm[source][key]
+    },
+    set(newValue){
+      if (vm[source][key] === newValue) return
+      vm[source][key] = newValue
+    }
+  })
+}
+
 export function initState(vm) {
   //做不同的初始化工作
   const opts = vm.$options
 
-  if (opts.props) {
-    initProps(vm)
-  }
-  if (opts.methods) {
-    initMethods(vm)
-  }
+  if (opts.props) initProps(vm, opts.props)
+  if (opts.methods) initMethods(vm, opts.methods)
   if (opts.data) {
     initData(vm)  //初始化数据
+  } else { // 如果没有传data的话  默认设置一个data
+    observe(vm._data = {}) 
   }
-  if (opts.computed) {
-    initComputed(vm)  //初始化计算属性
-  }
+  if (opts.computed) initComputed(vm, opts.computed)  //初始化计算属性
   if (opts.watch) {
     initWatch(vm) //初始化watch
   }
 
 }
-function initProps(vm) {
-  
+function initProps(vm, propsOptions) {
+  const propsData = vm.$options.propsData || {}
+  const props = vm._props = {}
+
+  const keys = vm.$options._propKeys = []
+
+  for (const key in propsOptions) {
+    keys.push(key)
+    // 获取属性的值
+    const value = validateProp(key, propsOptions, propsData, vm)
+    // 遍历属性进行监听
+    defineReactive(props, key, value)
+  }
 }
 function initMethods(vm) {
   
@@ -35,9 +55,30 @@ function initData(vm) { // 将用户插入的数据  通过Object.defineProperty
   // 判断传入的data是函数还是对象   处理之后重新赋值
   // 将新值存储到一个新的对象_data中   不去更改用处传入的原对象
 
-  data = vm._data =  typeof data === 'function' ? data.call(this) : data || {}
+  data = vm._data =  typeof data === 'function' ? getData(data,vm) : data || {}
 
-  //不去多调用一层_data  设置代理 vm. 直接获取到 vm._data.
+  //如果data不是对象  做一下初始化
+  if (Object.prototype.toString.call(data) !== '[object Object]') {
+    data = {}
+  }
+
+  const keys = Object.keys(data)
+  //比较一下methods和props中是否有冲突的属性  因为属性都要挂在到vm上
+  const props = vm.$options.props
+  const methods = vm.$options.methods
+  let i = keys.length
+  while (i--) {
+    //如果方法名冲突  则报错
+    if (methods && Object.prototype.hasOwnProperty.call(methods,key)) {
+      throw new Error('methods中属性冲突！')
+    }
+    if (props && Object.prototype.hasOwnProperty.call(props,key)) {
+      throw new Error('props中属性冲突！')
+    } else if (Object.prototype.toString.call(key).charAt(0) !== '$' && Object.prototype.toString.call(key).charAt(0) !== '_') {//判断一下属性前缀 防止覆盖私有属性
+      //不去多调用一层_data  设置代理 vm. 直接获取到 vm._data
+      proxy(vm, '_data', key)
+    }
+  }
   for (const key in data) {
     proxy(vm,'_data',key)
   }
@@ -90,4 +131,9 @@ function initWatch(vm) {
     }
     creatWatcher(vm,key,handler,{ immediate: userDef.immediate })
   })
+}
+
+export function getData (data,vm) {
+  
+  return data.call(vm)
 }

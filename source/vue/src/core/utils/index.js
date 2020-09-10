@@ -1,26 +1,26 @@
 export function isObject(data) {
   return typeof data === 'object' && data !== null;
 }
-export function proxy(vm,source,key) { //代理数据  vm.msg = vm._data.msg
-  Object.defineProperty(vm,key,{
-    get(){
-      return vm[source][key]
-    },
-    set(newValue){
-      if (vm[source][key] === newValue) return
-      vm[source][key] = newValue
-    }
-  })
-}
-export function def(data,key,val) {
-  Object.defineProperty(data,key,{
-    enumerable:false,//不可枚举
-    configurable:false,//不可配置
+
+export function def(obj, key, val, enumerable) {
+  Object.defineProperty(obj,key,{
+    enumerable:!!enumerable,
+    configurable:true,
+    writable: true,
     value:val
   })
 }
 export function query(el) {
-  return typeof el === 'string' ? document.querySelector(el) : el
+  //根据传入的id来获取到相应的dom
+  if (typeof el === 'string') {
+    const selected = document.querySelector(el)
+    if(!selected){ //如果没有获取到 则新建一个dom
+      return document.createElement('div')
+    }
+    return selected
+  } else {
+    return typeof el === 'string' ? document.querySelector(el) : el
+  }
 }
 export function compiler(node,vm) {
   let childNodes = node.childNodes;
@@ -40,14 +40,13 @@ function compilerText(node,vm){ //编辑文本 替换{{}}
     node.expr = node.textContent //给节点增加了一个自定义属性 为了方便后续的更新操作
   }
   node.textContent = node.expr.replace(regexp,function(...args) {
-    return getValue(vm,args[1])
+    return parsePath(vm,args[1])
   })
 }
-export function getValue(vm,expr) {
+export function parsePath(vm,expr) {
   let keys = expr.split('.')
-  console.log(keys)
-  return keys.reduce((memo,current) =>{
-    memo = memo[current]
-    return memo
+  return keys.reduce((obj,current) =>{
+    obj = obj[current]
+    return obj
   },vm)
 }

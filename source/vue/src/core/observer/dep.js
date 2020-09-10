@@ -1,3 +1,5 @@
+import { remove } from "../../shared/util";
+
 let id = 0;
 class Dep{ //发布订阅模式
   constructor(){
@@ -16,15 +18,20 @@ class Dep{ //发布订阅模式
       Dep.target.addDep(this) // 希望可以在watcher中互相记忆
     }
   }
+
+  removeSub(sub){
+    remove(this.subs, sub)
+  }
 }
-let stack = []
+Dep.target = null
+let targetStack = []
 //用来保存当前的watcher
 export function pushTarget(watcher) {
   Dep.target = watcher
-  stack.push(watcher)
+  targetStack.push(watcher)
 }
-export function popTarget(params) {
-  stack.pop()
-  Dep.target = stack[stack.length - 1]
+export function popTarget() {
+  targetStack.pop()
+  Dep.target = targetStack[targetStack.length - 1]
 }
 export default Dep; // 用来收集依赖 收集的时一个个watcher

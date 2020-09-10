@@ -1,5 +1,7 @@
 const path = require('path')
 const HtmlWebpackPlugin = require('html-webpack-plugin')
+// const UglifyJSPlugin  = require('uglifyjs-webpack-plugin')
+// const CleanWebpackPlugin = require('')
 module.exports = {
   entry:'./src/index.js', //以src的index.js为入口进行打包
   output:{
@@ -13,6 +15,9 @@ module.exports = {
   plugins:[
     new HtmlWebpackPlugin({
       template:path.resolve(__dirname,'public/index.html')
-    })
+    }),
+    // new UglifyJSPlugin({
+    //   sourceMap:true
+    // })
   ]
 }
