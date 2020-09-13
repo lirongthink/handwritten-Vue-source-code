@@ -88,7 +88,7 @@ export function createPatchFunction(backend) {
   }
 
   function removeVnodes(parentElm, vnodes, startIdx, endIdx) {
-    for (; startIdx <= endIdx; startIdx++) {
+    for (; startIdx <= endIdx; ++startIdx) {
       const ch = vnodes[startIdx]
       if (isDef(ch)) {
         if (!isDef(ch.tag)) {
@@ -329,7 +329,6 @@ export function createPatchFunction(backend) {
 
         //创建真实DOM并将VNode挂载上去
         createElm(vnode, insertedVnodeQueue, parentElm)
-
         // 移除旧的节点
         if (isDef(parentElm)) {
           removeVnodes(parentElm, [oldVnode], 0, 0)
