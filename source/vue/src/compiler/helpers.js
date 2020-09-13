@@ -15,6 +15,12 @@ export function getAndRemoveAttr(el, name, removeFromMap) {
   return val
 }
 
+export function pluckModuleFunction (modules, key){
+  return modules
+    ? modules.map(m => m[key]).filter(_ => _)
+    : []
+}
+
 // 解析v-bind指令
 export function getBindingAttr (el, name, getStatic) {
   //解析并移除指令

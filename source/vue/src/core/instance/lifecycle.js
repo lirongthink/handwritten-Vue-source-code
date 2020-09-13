@@ -15,7 +15,6 @@ export function setActiveInstance(vm) {
 
 export function lifecycleMixin(Vue) {
   Vue.prototype._update = function (vnode) {
-    
     const vm = this
     const prevEl = vm.$el
     const prevVnode = vm._vnode

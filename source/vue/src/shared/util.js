@@ -30,6 +30,14 @@ export function hasOwn(obj, key) {
 
 const _toString = Object.prototype.toString
 
+export function toString (val) {
+  return val == null
+    ? ''
+    : Array.isArray(val) || (isPlainObject(val) && val.toString === _toString)
+      ? JSON.stringify(val, null, 2)
+      : String(val)
+}
+
 export function isPlainObject (obj) {
   return _toString.call(obj) === '[object Object]'
 }
@@ -59,7 +67,13 @@ export function extend (to, _from) {
   return to
 }
 
-export function makeMap (str, expectsLowerCase){
+export function genStaticKeys (modules) {
+  return modules.reduce((keys, m) => {
+    return keys.concat(m.staticKeys || [])
+  }, []).join(',')
+}
+
+export function makeMap (str, expectsLowerCase) {
   const map = Object.create(null)
   const list = str.split(',')
   for (let i = 0; i < list.length; i++) {

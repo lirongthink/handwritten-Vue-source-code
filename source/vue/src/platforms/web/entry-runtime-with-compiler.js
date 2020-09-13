@@ -1,17 +1,18 @@
 import Vue from "./runtime/index.js";
 import { query } from "../../core/utils/index.js";
-import { compile } from "./compiler/index";
+import { compile, compileToFunctions } from "./compiler/index";
+import { shouldDecodeNewlines, shouldDecodeNewlinesForHref } from "./util/compat";
 
 const idToTemplate = function (id) {
   const el = query(id)
   return el && el.innerHTML
 }
-
+const mount = Vue.prototype.$mount
 Vue.prototype.$mount = function (el) {
   //获取挂载的元素
   el = el && query(el)
   //判断是否为body元素 直接返回  不能把Vue实例挂载到body上
-  if (el = document.body || el === document.documentElement) {
+  if (el === document.body || el === document.documentElement) {
     return this
   }
   //拿到配置项
@@ -48,6 +49,7 @@ Vue.prototype.$mount = function (el) {
       options.staticRenderFns = staticRenderFns
     }
   }
+  return mount.call(this, el)
 }
 
 function getOuterHTML (el) {
@@ -60,6 +62,6 @@ function getOuterHTML (el) {
   }
 }
 
-Vue.compile = compile
+Vue.compile = compileToFunctions
 
 export default Vue

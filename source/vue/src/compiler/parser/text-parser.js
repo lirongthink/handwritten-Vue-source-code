@@ -3,11 +3,11 @@ import { parseFilters } from "./filter-parser";
 const defaultTagRE = /\{\{((?:.|\r?\n)+?)\}\}/g
 const regexEscapeRE = /[-.*+?^${}()|[\]\/\\]/g
 
-const buildRegex = cached(delimiters => {
+const buildRegex = delimiters => {
   const open = delimiters[0].replace(regexEscapeRE, '\\$&')
   const close = delimiters[1].replace(regexEscapeRE, '\\$&')
   return new RegExp(open + '((?:.|\\n)+?)' + close, 'g')
-})
+}
 
 
 export function parseText (text, delimiters) {

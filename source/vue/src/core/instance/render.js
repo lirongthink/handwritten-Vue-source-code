@@ -1,6 +1,7 @@
 import { createElement } from "../vdom/create-element";
-import { createEmptyVNode } from "../vdom/vnode";
+import VNode, { createEmptyVNode } from "../vdom/vnode";
 import { nextTick } from "../utils/next-tick";
+import { installRenderHelpers } from "./render-helpers";
 
 export function initRender(vm) {
   
@@ -14,6 +15,8 @@ export function initRender(vm) {
 
 export function renderMixin(Vue) {
   
+  installRenderHelpers(Vue.prototype)
+
   Vue.prototype.$nextTick = function (fn) {
     return nextTick(fn, this)
   }
@@ -36,7 +39,6 @@ export function renderMixin(Vue) {
     if (!(vnode instanceof VNode) && Array.isArray(vnode)) {
       vnode = createEmptyVNode()
     }
-    
     vnode.parent = _parentVnode
     return vnode
   }

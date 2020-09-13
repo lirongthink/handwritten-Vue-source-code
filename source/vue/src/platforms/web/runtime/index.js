@@ -8,7 +8,7 @@ Vue.prototype.__patch__ = patch
 
 Vue.prototype.$mount = function (el) {
   el = query(el) || undefined
-  return mountComponent(this)
+  return mountComponent(this, el)
 }
 
 export default Vue

@@ -1,4 +1,5 @@
 import { isNonPhrasingTag } from "../../platforms/web/compiler";
+import { makeMap } from "../../shared/util";
 const unicodeLetters = 'a-zA-Z\u00B7\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u037D\u037F-\u1FFF\u200C-\u200D\u203F-\u2040\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD'
 const attribute = /^\s*([^\s"'<>\/=]+)(?:\s*(=)\s*(?:"([^"]*)"+|'([^']*)'+|([^\s"'=<>`]+)))?/
 const ncname = `[a-zA-Z_][\\-\\.0-9_a-zA-Z${unicodeLetters}]*`
@@ -9,15 +10,7 @@ const startTagClose = /^\s*(\/?)>/
 const endTag = new RegExp(`^<\\/${qnameCapture}[^>]*>`)
 const doctype = /^<!DOCTYPE [^>]+>/i
 
-export const isPlainTextElement = function () {
-  const str = 'script,style,textarea'
-  const map = Object.create(null)
-  const list = str.split(',')
-  for (let i = 0; i < list.length; i++) {
-    map[list[i]] = true
-  }
-  return val => map[val.toLowerCase()]
-}
+export const isPlainTextElement = makeMap('script,style,textarea', true)
 const reCache = {}
 
 const decodingMap = {
@@ -31,15 +24,7 @@ const decodingMap = {
 const encodedAttr = /&(?:lt|gt|quot|amp);/g
 const encodedAttrWithNewLines = /&(?:lt|gt|quot|amp|#10|#9);/g
 
-const isIgnoreNewlineTag = function () {
-  const str = 'pre,textarea'
-  const map = Object.create(null)
-  const list = str.split(',')
-  for (let i = 0; i < list.length; i++) {
-    map[list[i]] = true
-  }
-  return val => map[val]
-}
+const isIgnoreNewlineTag = makeMap('pre,textarea', true)
 const shouldIgnoreFirstNewline = (tag, html) => tag && isIgnoreNewlineTag(tag) && html[0] === '\n'
 
 function decodeAttr(value, shouldDecodeNewLines) {
@@ -47,12 +32,12 @@ function decodeAttr(value, shouldDecodeNewLines) {
   return value.replace(re, match => decodingMap[match])
 }
 
-export function parseHTML(html, opitons) {
+export function parseHTML(html, options) {
   // 存储标签的栈
   const stack = []
   const expectHTML = options.expectHTML
-  const isUnaryTag = options.isUnaryTag || false
-  const canBeLeftOpenTag = options.canBeLeftOpenTag || false
+  const isUnaryTag = options.isUnaryTag || (() => false)
+  const canBeLeftOpenTag = options.canBeLeftOpenTag || (() => false)
   let index = 0
   let last, lastTag
   while (html) {
@@ -264,8 +249,8 @@ export function parseHTML(html, opitons) {
     if (pos >= 0) {
       // 闭合他之前的所有标签
       for (let i = stack.length - 1; i >= pos; i--) {
-        if (opitons.end) {
-          opitons.end(stack[i].tag, start, end)
+        if (options.end) {
+          options.end(stack[i].tag, start, end)
         }
       }
 
@@ -273,15 +258,15 @@ export function parseHTML(html, opitons) {
       stack.length = pos
       lastTag = pos && stack[pos - 1].tag
     } else if (lowerCasedTagName === 'br') {
-      if (opitons.start) {
-        opitons.start(tagName, [], true, start, end)
+      if (options.start) {
+        options.start(tagName, [], true, start, end)
       }
     } else if (lowerCasedTagName === 'p') {
-      if (opitons.start) {
-        opitons.start(tagName, [], false, start, end)
+      if (options.start) {
+        options.start(tagName, [], false, start, end)
       }
-      if (opitons.end) {
-        opitons.end(tagName, start, end)
+      if (options.end) {
+        options.end(tagName, start, end)
       }
     }
 

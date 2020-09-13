@@ -1,6 +1,7 @@
 import Vue from "vue";
 
 let vm = new Vue({
+  template:"<div>{{fullName}}</div>",
   el:'#app',//表示要渲染的元素是app
   data(){
     return {

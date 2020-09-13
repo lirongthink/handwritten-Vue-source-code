@@ -1,4 +1,4 @@
-import { isDef, isTrue, isPrimitive, isUndef } from "../../shared/util";
+import { isDef, isTrue, isPrimitive, isUndef, makeMap } from "../../shared/util";
 import VNode from "./vnode"; 
 
 
@@ -13,14 +13,7 @@ function sameVnode(a, b) {
   )
 }
 
-function isTextInputType(val) {
-  const map = Object.create(null)
-  const list = ['text','number','password','search','email','tel','url']
-  for (let i = 0; i < list.length; i++) {
-    map[list[i]] = true
-  }
-  return map[val]
-}
+var isTextInputType = makeMap('text,number,password,search,email,tel,url');
 
 function sameInputType (a, b) {
   if (a.tag !== 'input') return true
@@ -98,19 +91,19 @@ export function createPatchFunction(backend) {
     for (; startIdx <= endIdx; startIdx++) {
       const ch = vnodes[startIdx]
       if (isDef(ch)) {
-        // if (isDef(ch.tag)) {
+        if (!isDef(ch.tag)) {
           // removeAndInvokeRemoveHook(ch)
           //调用destroy钩子函数
         //   invokeDestroyHook(ch)
         // } else {
           removeNode(ch.elm)
-        // }
+        }
       }
     }
   }
 
   function invokeCreateHooks (vnode, insertedVnodeQueue) {
-    i = vnode.data.hook
+    let i = vnode.data.hook
     if (isDef(i)) {
       if (isDef(i.insert)) insertedVnodeQueue.push(vnode)
     }
@@ -155,7 +148,7 @@ export function createPatchFunction(backend) {
     return isDef(vnode.tag)
   }  
 
-  function createElm(vnode, insertedVnodeQueue, parentElm) {
+  function createElm(vnode, insertedVnodeQueue, parentElm, refElm) {
 
     // 如果是组件
     if (createComponent(vnode, insertedVnodeQueue, parentElm, refElm)) {
@@ -315,9 +308,7 @@ export function createPatchFunction(backend) {
   }
 
   return function patch(oldVnode, vnode) {
-    
     const insertedVnodeQueue = []
-    
     if (isUndef(oldVnode)) {
       createElm(vnode, insertedVnodeQueue)
     } else {

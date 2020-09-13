@@ -1,17 +1,32 @@
+import he from 'he'
 import { parseHTML } from "./html-parser";
 import { extend } from "../../shared/util";
-import { getAndRemoveAttr, getBindingAttr } from "../helpers";
+import { getAndRemoveAttr, getBindingAttr, pluckModuleFunction } from "../helpers";
+import { parseText } from "./text-parser";
 
 export const forAliasRE = /([\s\S]*?)\s+(?:in|of)\s+([\s\S]*)/
 export const forIteratorRE = /,([^,\}\]]*)(?:,([^,\}\]]*))?$/
 const stripParensRE = /^\(|\)$/g
-
 const lineBreakRE = /[\r\n]/
 const whitespaceRE = /\s+/g
 
+let platformIsPreTag
+let postTransforms
+
+const stack = []
 let root
 let currentParent
 let inVPre = false
+let inPre = false
+let delimiters
+
+function makeAttrsMap (attrs) {
+  const map = {}
+  for (let i = 0, l = attrs.length; i < l; i++) {
+    map[attrs[i].name] = attrs[i].value
+  }
+  return map
+}
 
 export function createASTElement(tag, attrs, parent) {
   return {
@@ -30,8 +45,12 @@ function isTextTag (el) {
 }
 
 export function parse(template, options) {
-  
-  
+
+
+  postTransforms = pluckModuleFunction(options.modules, 'postTransformNode')
+  platformIsPreTag = options.isPreTag || (() => false)
+  const whitespaceOption = options.whitespace
+  delimiters = options.delimiters
   function closeElement (element) {
     if (!inVPre) {
       element = processElement(element, options)
@@ -52,6 +71,18 @@ export function parse(template, options) {
         currentParent.children.push(element)
         element.parent = currentParent
       }
+    }
+
+    if (element.pre) {
+      inVPre = false
+    }
+
+    if (platformIsPreTag(element.tag)) {
+      inPre = false
+    }
+
+    for (let i = 0; i < postTransforms.length; i++) {
+      postTransforms[i](element, options)
     }
   }
   parseHTML(template,{
@@ -110,7 +141,7 @@ export function parse(template, options) {
       }
       const children = currentParent.children
       if (inPre || text.trim()) {
-        text = isTextTag(currentParent)
+        text = isTextTag(currentParent) ? text : he.decode(text)
       } else if (!children.length){
         text = ''
       } else if (whitespaceOption) {
@@ -181,7 +212,7 @@ function findPrevElement(children) {
 
 function processPre(el) {
   //获取指令并移除指令相对应的字符串
-  if (getAndRemoveAttr(el, 'v-pre') !== null) {
+  if (getAndRemoveAttr(el, 'v-pre') != null) {
     el.pre = true
   }
 }
@@ -276,6 +307,13 @@ function processComponent (el) {
   //获取并移除inline-template属性
   if (getAndRemoveAttr(el, 'inline-template') != null) {
     el.inlineTemplate = true
+  }
+}
+
+function processOnce (el) {
+  const once = getAndRemoveAttr(el, 'v-once')
+  if (once != null) {
+    el.once = true
   }
 }
 

@@ -1,9 +1,11 @@
+import { pluckModuleFunction } from "../helpers"
+
 export class CodegenState {
   constructor(options) {
     this.options = options
-    // this.transforms = 
-    // this.dataGenFns = 
-    const isReservedTag = options.isReservedTag || false
+    this.transforms = pluckModuleFunction(options.modules, 'transformCode')
+    this.dataGenFns = pluckModuleFunction(options.modules, 'genData')
+    const isReservedTag = options.isReservedTag || (() => false)
     this.maybeComponent = () => !!el.component | !isReservedTag(el.tag)
     this.onceId = 0
     this.staticRenderFns = []
@@ -14,7 +16,7 @@ export class CodegenState {
 export function generate(ast, options) {
   const state = new CodegenState(options)
   //是否存在AST 如果存在 则解析生成代码字符串  否则返回一个创建空div的代码
-  const code = ast ? SVGLinearGradientElement(ast, state) : '_c("div")'
+  const code = ast ? genElement(ast, state) : '_c("div")'
   return {
     render: `with(this){return ${code}}`,
     staticRenderFns: state.staticRenderFns
@@ -100,7 +102,7 @@ function genNode(node, state) {
   } else if (node.type === 3 && node.isComment) {
     return genComment(node)
   } else {
-    return WebGLRenderingContext(node)
+    return genText(node)
   }
 }
 

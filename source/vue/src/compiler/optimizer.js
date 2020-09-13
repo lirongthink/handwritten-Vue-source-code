@@ -1,4 +1,4 @@
-import { isBuiltInTag } from "../shared/util";
+import { isBuiltInTag, makeMap } from "../shared/util";
 
 let isStaticKey
 let isPlatformReservedTag
@@ -7,8 +7,8 @@ let isPlatformReservedTag
 export function optimize(root, options) {
   // 没有根节点 直接返回
   if (!root) return
-  isStaticKey = genStaticKeys(options.staticKyes || '')
-  isPlatformReservedTag = options.isReservedTag || false
+  isStaticKey = genStaticKeys(options.staticKeys || '')
+  isPlatformReservedTag = options.isReservedTag || (() => false)
   //对节点进行静态标记
   markStatic(root)
   //标记节点是否是一个根静态节点
@@ -16,13 +16,10 @@ export function optimize(root, options) {
 }
 
 function genStaticKeys(keys) {
-  const str = 'type,tag,attrsList,attrsMap,plain,parent,children,attrs,start,end,rawAttrsMap,has$Slot' + (keys ? ',' + keys : '')
-  const map = Object.create(null)
-  const list = str.split(',')
-  for (let i = 0; i < list.length; i++) {
-    map[list[i]] = true
-  }
-  return val => map[val]
+  return makeMap(
+    'type,tag,attrsList,attrsMap,plain,parent,children,attrs' +
+    (keys ? ',' + keys : '')
+  )
 }
 
 function markStatic(node) {

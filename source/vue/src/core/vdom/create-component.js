@@ -63,7 +63,6 @@ export function createComponent(Ctor, data, context, children, tag) {
     data,undefined, undefined, undefined, context,
     { Ctor, tag, children }
   )
-
   return vnode
 }
 
