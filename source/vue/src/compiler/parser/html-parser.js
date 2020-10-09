@@ -209,7 +209,7 @@ export function parseHTML(html, options) {
     for (let i = 0; i < l; i++) {
       const args = match.attrs[i]
       const value = args[3] || args[4] || args[5] || ''
-      const shouldDecodeNewLines = tagName = 'a' && args[1] === 'href' ? options.shouldDecodeNewLinesForHref : options.shouldDecodeNewLines
+      const shouldDecodeNewLines = tagName === 'a' && args[1] === 'href' ? options.shouldDecodeNewLinesForHref : options.shouldDecodeNewLines
       attrs[i] = {
         name: args[1],
         value: decodeAttr(value, shouldDecodeNewLines)

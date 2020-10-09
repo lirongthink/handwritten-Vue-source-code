@@ -1,8 +1,8 @@
-import { baseCompile } from "../../../compiler";
 import modules from './modules/index'
+import directives from './directives/index'
 import { genStaticKeys, makeMap } from "../../../shared/util";
 import { isPreTag, isReservedTag } from "../util/element";
-import { createCompileToFunctionFn } from "../../../compiler/to-function";
+import { createCompiler } from '../../../compiler';
 
 export const isNonPhrasingTag = makeMap(
   'address,article,aside,base,blockquote,body,caption,col,colgroup,dd,' +
@@ -20,12 +20,11 @@ const baseOptions = {
   modules,
   expectHTML: true,
   isPreTag,
+  directives,
   isUnaryTag,
   isReservedTag
 }
 
-export function compile (template, baseOptions){
-  const compiled = baseCompile(template.trim(), baseOptions)
-  return compiled
-}
-export const compileToFunctions = createCompileToFunctionFn(compile)
+const { compile, compileToFunctions } = createCompiler(baseOptions)
+
+export { compile, compileToFunctions }

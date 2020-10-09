@@ -42,6 +42,31 @@ export function isPlainObject (obj) {
   return _toString.call(obj) === '[object Object]'
 }
 
+function polyfillBind (fn, ctx) {
+  function boundFn (a) {
+    const l = arguments.length
+    return l
+      ? l > 1
+        ? fn.apply(ctx, arguments)
+        : fn.call(ctx, a)
+      : fn.call(ctx)
+  }
+
+  boundFn._length = fn.length
+  return boundFn
+}
+
+function nativeBind (fn, ctx) {
+  return fn.bind(ctx)
+}
+
+export const bind = Function.prototype.bind
+  ? nativeBind
+  : polyfillBind
+
+
+
+export const emptyObject = Object.freeze({})
 
 export function remove (arr, item) {
   if (arr.length) {
@@ -52,6 +77,8 @@ export function remove (arr, item) {
   }
 }
 export const isBuiltInTag = makeMap('slot,component', true)
+
+export const isReservedAttribute = makeMap('key,ref,slot,slot-scope,is')
 
 //判断数组的下标是否合法
 export function isValidArrayIndex(val) {
@@ -82,4 +109,34 @@ export function makeMap (str, expectsLowerCase) {
   return expectsLowerCase
     ? val => map[val.toLowerCase()]
     : val => map[val]
+}
+const camelizeRE = /-(\w)/g
+export const camelize = (str) => {
+  return str.replace(camelizeRE, (_, c) => c ? c.toUpperCase() : '')
+}
+
+export function toArray (list, start) {
+  // 尾部开始的位置
+  start = start || 0
+  let i = list.length - start
+  // 新建一个数组
+  const ret = new Array(i)
+  while (i--) {
+    ret[i] = list[i + start]
+  }
+  // 返回新数组
+  return ret
+}
+/**
+ * 将数组转化成对象
+ * @param {Array} arr 传入的数组
+ */
+export function toObject (arr) {
+  const res = {}
+  for (let i = 0; i < arr.length; i++) {
+    if (arr[i]) {
+      extend(res, arr[i])
+    }
+  }
+  return res
 }

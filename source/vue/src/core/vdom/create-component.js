@@ -53,6 +53,13 @@ export function createComponent(Ctor, data, context, children, tag) {
     Ctor = baseCtor.extend(Ctor)
   }
 
+  data = data || {}
+
+  // 这里存储一下组件的自定义事件
+  const listeners = data.on
+
+  // 将组件的原生DOM事件进行配置
+  data.on = data.nativeOn
   //安装组件的钩子
   installComponentHooks(data)
 
@@ -61,7 +68,7 @@ export function createComponent(Ctor, data, context, children, tag) {
   const vnode = new VNode(
     `vue-component-${Ctor.cid}${name ? `-${name}` : ''}`,
     data,undefined, undefined, undefined, context,
-    { Ctor, tag, children }
+    { Ctor, listeners, tag, children }
   )
   return vnode
 }

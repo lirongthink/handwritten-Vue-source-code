@@ -1,12 +1,16 @@
 import { pluckModuleFunction } from "../helpers"
+import baseDirectives from '../directives/index'
+import { genHandlers } from "./events";
+import { extend } from "../../shared/util";
 
 export class CodegenState {
   constructor(options) {
     this.options = options
     this.transforms = pluckModuleFunction(options.modules, 'transformCode')
     this.dataGenFns = pluckModuleFunction(options.modules, 'genData')
+    this.directives = extend(extend({}, baseDirectives), options.directives)
     const isReservedTag = options.isReservedTag || (() => false)
-    this.maybeComponent = () => !!el.component | !isReservedTag(el.tag)
+    this.maybeComponent = (el) => !!el.component || !isReservedTag(el.tag)
     this.onceId = 0
     this.staticRenderFns = []
     this.pre = false
@@ -106,6 +110,38 @@ function genNode(node, state) {
   }
 }
 
+function genDirectives(el, state) {
+  // 取出AST节点的指令集
+  const dirs = el.directives
+  // 如果没有指令 直接返回
+  if (!dirs) return
+  let res = 'directives:['
+  let hasRuntime = false
+  let i, l, dir, needRuntime
+  for (i = 0, l = dirs.length; i < l; i++) {
+    dir = dirs[i]
+    needRuntime = true
+    
+    const gen = state.directives[dir.name]
+    if (gen) {
+      needRuntime = !!gen(el, dir, state.warn)
+    }
+    if (needRuntime) {
+      hasRuntime = true
+      res += `{name:"${dir.name}",rawName:"${dir.rawName}"${
+        dir.value ? `,value:(${dir.value}),expression:${JSON.stringify(dir.value)}` : ''
+      }${
+        dir.arg ? `,arg:"${dir.arg}"` : ''
+      }${
+        dir.modifiers ? `,modifiers:${JSON.stringify(dir.modifiers)}` : ''
+      }},`
+    }
+  }
+  if (hasRuntime) {
+    return res.slice(0, -1) + ']'
+  }
+}
+
 export function genText (text) {
   return `_v(${text.type === 2
     ? text.expression
@@ -137,8 +173,8 @@ function genStatic (el, state) {
 export function genData(el, state) {
   let data = '{'
   //对指令的处理
-  // const dirs = genDirectives(el, state)
-  // if (dirs) data += dirs + ','
+  const dirs = genDirectives(el, state)
+  if (dirs) data += dirs + ','
 
   // 对key的处理
   if (el.key) {
@@ -170,9 +206,28 @@ export function genData(el, state) {
   if (el.props) {
     data += `domProps:{${genProps(el.props)}},`
   }
+  //对事件的处理 并返回代码串
+  if (el.events) { // 对自定义事件的处理
+    data += `${genHandlers(el.events, false)},`
+  }
+  if (el.nativeEvents) { // 对原生DOM事件的处理
+    data += `${genHandlers(el.nativeEvents, true)}`
+  }
 
   data = data.replace(/,$/, '') + '}'
 
+  // 将对象中的v-bind指令用render函数进行包裹
+  if (el.wrapData) {
+    data = el.wrapData(data)
+  console.log(data,'data');
+
+  }
+  // 将对象中的v-on指令用render函数进行包裹
+  if (el.wrapListeners) {
+    data = el.wrapListeners(data)
+  console.log(data,'data');
+
+  }
   return data
 }
 function genComponent(componentName, el, state) {
@@ -186,7 +241,7 @@ function genProps(props) {
   let res = ''
   for (let i = 0; i < props.length; i++) {
     const prop = props[i]
-    res += `"${prop.name}":${transformSpecialNewlines(value)}`
+    res += `"${prop.name}":${transformSpecialNewlines(prop.value)},`
   }
   return res.slice(0, -1)
 }

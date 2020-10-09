@@ -43,6 +43,7 @@ export function _createElement(context,tag,data,children,normalizationType) {
   //创建VNode
   let vnode, ns
   if (typeof tag === 'string') {
+    let Ctor
     vnode = new VNode(tag, data, children, undefined, undefined, context)
   } else { //对组件的处理
     vnode = createComponent(tag, data, context, children)

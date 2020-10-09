@@ -49,7 +49,6 @@ export function defineReactive(obj,key,value) {
     configurable:true,
     // ** 依赖收集
     get(){
-      console.log(value,'取值')
       if (Dep.target) { //这次有值 是渲染watcher
         //希望存入的watcher 不能重复，如果重复会造成更新时多次渲染
         dep.depend(); // 他像dep中可以存watcher 这个watcher中也存放dep 实现一个多对多的关系

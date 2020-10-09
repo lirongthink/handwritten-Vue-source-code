@@ -2,7 +2,7 @@ import { observe, defineReactive, set } from "../observer/index";
 import Watcher from "../observer/watcher";
 import Dep from "../observer/dep";
 import { validateProp } from "../utils/props";
-import { isPlainObject } from "../../shared/util";
+import { isPlainObject, hasOwn, bind } from "../../shared/util";
 
 
 const sharedPropertyDefinition = {
@@ -61,8 +61,18 @@ function initProps(vm, propsOptions) {
     }
   }
 }
-function initMethods(vm) {
-  
+function initMethods(vm,methods) {
+  const props = vm.$options.props
+  // 循环遍历方法
+  for (const key in methods) {
+    if (typeof methods[key] !== 'function') {
+      console.log(`Method "${key}" has type "${typeof methods[key]}" in the component definition.`)
+    }
+    if (props && hasOwn(props, key)) {
+      console.log(`Method "${key}" has already been defined as a prop.`)
+    }
+    vm[key] = typeof methods[key] !== 'function' ? (() =>{}) : bind(methods[key], vm)
+  }
 }
 function initData(vm) { // 将用户插入的数据  通过Object.defineProperty重新定义
   let data = vm.$options.data; // 用户传入的data

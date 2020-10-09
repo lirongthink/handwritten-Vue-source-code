@@ -25,7 +25,6 @@ export function renderMixin(Vue) {
     //拿到Vue实例
     const vm = this
     const { render, _parentVnode } = vm.$options
-
     //将占位符vnode赋值给$vnode
     vm.$vnode = _parentVnode
     // 此vnode为渲染vnode

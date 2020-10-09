@@ -1,6 +1,11 @@
 import { isDef, isTrue, isPrimitive, isUndef, makeMap } from "../../shared/util";
 import VNode from "./vnode"; 
 
+export const emptyNode = new VNode('', {}, [])
+
+// 钩子函数
+const hooks = ['create', 'activate', 'update', 'remove', 'destroy']
+
 
 function sameVnode(a, b) {
   return ( // 首先key要相同 其次再去比较tag标签名、 isComment是否为注释节点、 data是否已定义 、如果是输入框 类型是否相同
@@ -34,7 +39,19 @@ function createKeyToOldIdx(children, beginIdx, endIdx) {
 }
 
 export function createPatchFunction(backend) {
-  const { nodeOps } = backend
+  let i, j
+  const cbs = {}
+  const { modules, nodeOps } = backend
+  // 循环添加钩子函数
+  for (i = 0; i < hooks.length; ++i) {
+    cbs[hooks[i]] = []
+    // 循环modules中的函数并添加
+    for (j = 0; j < modules.length; ++j) {
+      if (isDef(modules[j][hooks[i]])) {
+        cbs[hooks[i]].push(modules[j][hooks[i]])
+      }
+    }
+  }
   
   function createChildren(vnode, children, insertedVnodeQueue) {
     if (Array.isArray(children)) {
@@ -103,8 +120,14 @@ export function createPatchFunction(backend) {
   }
 
   function invokeCreateHooks (vnode, insertedVnodeQueue) {
+    // 循环调用create钩子函数
+    for (let i = 0; i < cbs.create.length; ++i) {
+      cbs.create[i](emptyNode, vnode)
+    }
+    
     let i = vnode.data.hook
     if (isDef(i)) {
+      if (isDef(i.create)) i.create(emptyNode, vnode)
       if (isDef(i.insert)) insertedVnodeQueue.push(vnode)
     }
   }
@@ -198,16 +221,20 @@ export function createPatchFunction(backend) {
       vnode.componentInstance = oldVnode.componentInstance
       return
     }
-
     //判断是否有prepatch钩子函数  如果有则执行
-    // let i
-    // const data = vnode.data
-    // if (isDef(data) && isDef(i = data.hook) && isDef(i = i.prepatch)) {//这里相当于深层次查找 一层一层的判断
-    //   i(oldVnode, vnode)
-    // }
+    let i
+    const data = vnode.data
+    if (isDef(data) && isDef(i = data.hook) && isDef(i = i.prepatch)) {//这里相当于深层次查找 一层一层的判断
+      i(oldVnode, vnode)
+    }
 
     const oldCh = oldVnode.children
     const ch = vnode.children
+
+    if (isDef(data) && isPatchable(vnode)) {
+      for (i = 0; i < cbs.update.length; ++i) cbs.update[i](oldVnode, vnode)
+      if (isDef(i = data.hook) && isDef(i = i.update)) i(oldVnode, vnode)
+    }
     // 非文本节点
     if (isUndef(vnode.text)) {
       //新旧节点都有子节点
@@ -227,6 +254,9 @@ export function createPatchFunction(backend) {
       }
     } else if (oldVnode.text !== vnode.text) { //文本节点的处理  如果文本不同直接替换文本
       nodeOps.setTextContent(elm, vnode.text)
+    }
+    if (isDef(data)) {
+      if (isDef(i = data.hook) && isDef(i = i.postpatch)) i(oldVnode, vnode)
     }
   }
 

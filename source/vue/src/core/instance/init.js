@@ -3,6 +3,7 @@ import Watcher from "../observer/watcher";
 import { query, compiler } from "../utils";
 import { initRender } from "./render";
 import { initLifecycle, callHook } from "./lifecycle";
+import { initEvents } from "./events";
 export function initMixin(Vue) {
   Vue.prototype._init = function(options) {
     const vm = this;//当前实例
@@ -15,6 +16,7 @@ export function initMixin(Vue) {
     // MVVM原理 需要将数据重新初始化
     //拦截数组的方法 和 对象的属性
     initLifecycle(vm)
+    initEvents(vm)
     initRender(vm)
     // 此时data methods 等还没初始化 不能拿到
     callHook(vm, 'beforeCreate')
@@ -78,6 +80,11 @@ export function initInternalComponent(vm, options) {
 
   const vnodeComponentOptions = parentVnode.componentOptions
   opts.propsData = vnodeComponentOptions.propsData
+  // 拿到子组件绑定的自定义事件
+  opts._parentListeners = vnodeComponentOptions.listeners
+  opts._renderChildren = vnodeComponentOptions.children
+  opts._componentTag = vnodeComponentOptions.tag
+
 
   if (options.render) {
     opts.render = options.render

@@ -1,17 +1,30 @@
 import he from 'he'
 import { parseHTML } from "./html-parser";
-import { extend } from "../../shared/util";
-import { getAndRemoveAttr, getBindingAttr, pluckModuleFunction } from "../helpers";
+import { extend, camelize } from "../../shared/util";
+import { getAndRemoveAttr, getBindingAttr, pluckModuleFunction, addHandler, addDirective, addAttr, addProp } from "../helpers";
 import { parseText } from "./text-parser";
+import { parseFilters } from './filter-parser';
 
 export const forAliasRE = /([\s\S]*?)\s+(?:in|of)\s+([\s\S]*)/
 export const forIteratorRE = /,([^,\}\]]*)(?:,([^,\}\]]*))?$/
+export const onRE = /^@|^v-on:/
+export const dirRE = /^v-|^@|^:|^\./
+
+const argRE = /:(.*)$/
+export const bindRE = /^:|^\.|^v-bind:/
+const propBindRE = /^\./
+const modifierRE = /\.[^.]+/g
+
+
+
 const stripParensRE = /^\(|\)$/g
 const lineBreakRE = /[\r\n]/
 const whitespaceRE = /\s+/g
 
+let transforms
 let platformIsPreTag
 let postTransforms
+let platformMustUseProp
 
 const stack = []
 let root
@@ -44,11 +57,97 @@ function isTextTag (el) {
   return el.tag === 'script' || el.tag === 'style'
 }
 
+/**
+ * 解析指令
+ * @param {ASTElement} el 
+ */
+function processAttrs(el) {
+  // 拿到解析出的属性列表
+  const list = el.attrsList
+  let i, l, name, rawName, value, modifiers, isProp, syncGen
+  // 遍历属性列表
+  for (i = 0, l = list.length; i < l; i++) {
+    name = rawName = list[i].name
+    value = list[i].value
+    // 判断 是否是 指令或是事件
+    if (dirRE.test(name)) {
+      //标记元素为动态节点
+      el.hasBindings = true
+      // 截取掉前面的符号 并去匹配找出所有修饰符
+      modifiers = parseModifiers(name.replace(dirRE,''))
+      // 处理.prop
+      if (propBindRE.test(name)) {
+        (modifiers || (modifiers = {})).prop = true
+        name = `.` + name.slice(1).replace(modifierRE, '')
+      } else if (modifiers) {
+        // 将处理完后的修饰符截取掉
+        name = name.replace(modifierRE, '')
+      }
+      // 处理v-bind
+      if (bindRE.test(name)) {
+        // name = name.replace(bindRE, '')
+        // value = parseFilters(value)
+        // isProp = false
+        // if (modifiers) {
+        //   if (modifiers.prop) {
+        //     isProp = true
+        //     name = camelize(name)
+        //     if (name === 'innerHtml') name = 'innerHtml'
+        //   }
+        //   if (modifiers.camel) {
+        //     name = camelize(name)
+        //   }
+        //   if (modifiers.sync) {
+        //     syncGen = gen
+        //   }
+        // }
+      } else if (onRE.test(name)) { // 处理v-on  对绑定的事件进行处理
+        // 截取掉on的符号
+        name = name.replace(onRE, '')
+        // 添加事件获为其添加回调
+        addHandler(el, name, value, modifiers, false, list[i])
+      } else {// 正常指令 如v-model
+        // 截掉指令
+        name = name.replace(dirRE, '')
+
+        const argMatch = name.match(argRE)
+        const arg = argMatch && argMatch[1]
+
+        if (arg) {
+          name = name.slice(0, -(arg.length + 1))
+        }
+        // 添加指令
+        addDirective(el, name, rawName, value, arg, modifiers, list[i])
+      }
+    } else {
+      addAttr(el, name, JSON.stringify(value), list[i])
+      
+      if (!el.component &&
+        name === 'muted' &&
+        platformMustUseProp(el.tag, el.attrsMap.type, name)) {
+          addProp(el, name, 'true', list[i])
+      }
+    }
+  }
+}
+
+function parseModifiers(name) {
+  // 捕获修饰符
+  const match = name.match(modifierRE)
+  if (match) {
+    const ret = {}
+    // 循环 将修饰符的.截取掉并放入对象返回
+    match.forEach(m => { ret[m.slice(1)] = true })
+    return ret
+  }
+}
+
 export function parse(template, options) {
 
-
+  transforms = pluckModuleFunction(options.modules, 'transformNode')
   postTransforms = pluckModuleFunction(options.modules, 'postTransformNode')
   platformIsPreTag = options.isPreTag || (() => false)
+  platformMustUseProp = options.mustUseProp || (() => false)
   const whitespaceOption = options.whitespace
   delimiters = options.delimiters
   function closeElement (element) {
@@ -267,7 +366,11 @@ export function processElement (element, options) {
 
   processRef(element)
   processComponent(element)
-  processRawAttrs(element)
+  for (let i = 0; i < transforms.length; i++) {
+    element = transforms[i](element, options) || element
+  }
+  // 处理事件或bind等属性
+  processAttrs(element)
    return element
 }
 
