@@ -1,7 +1,7 @@
 import Vue from "vue";
 
 let vm = new Vue({
-  template:"<div><div>{{fullName}}</div><button @click='alterText'>点我测试</button><input type='text' @change=''></div>",
+  template:"<div><div>{{fullName}}</div><span>{{test}}</span><button @click='alterText'>点我测试</button><input v-model='test'></div>",
   el:'#app',//表示要渲染的元素是app
   data(){
     return {
@@ -10,6 +10,7 @@ let vm = new Vue({
       arr:[[1],2,3],
       firstName:'李',
       lastName:'荣想',
+      test:'',
       num:0
     }
   },

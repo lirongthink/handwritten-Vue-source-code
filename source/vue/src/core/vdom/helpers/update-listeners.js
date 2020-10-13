@@ -16,7 +16,7 @@ const normalizeEvent = (name) => {
   }
 }
 
-export function createFnInvoker(fns) {
+export function createFnInvoker(fns,vm) {
   // 后面用户触发的其实是这个事件，这个事件会将用户绑定的事件触发
   function invoker() {
     // 取出绑定的函数
@@ -30,6 +30,8 @@ export function createFnInvoker(fns) {
     } else {
       // 直接执行
       return fns.apply(null, arguments)
+      
+
     }
   }
   invoker.fns = fns
@@ -50,7 +52,7 @@ export function updateListeners(on, oldOn, add, remove, createOnceHandler, vm) {
     if (isUndef(old)) {
       if (isUndef(cur.fns)) {
         // 创建一个最后要执行的函数
-        cur = on[name] = createFnInvoker(cur)
+        cur = on[name] = createFnInvoker(cur,vm)
       }
       if (isTrue(event.once)) {
         // 创建一个执行一次就移除的函数

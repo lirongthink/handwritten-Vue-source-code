@@ -1,6 +1,6 @@
 import Vue from "./runtime/index.js";
 import { query } from "../../core/utils/index.js";
-import { compile, compileToFunctions } from "./compiler/index";
+import { compileToFunctions } from "./compiler/index";
 import { shouldDecodeNewlines, shouldDecodeNewlinesForHref } from "./util/compat";
 
 const idToTemplate = function (id) {

@@ -10,6 +10,8 @@ class Dep{ //发布订阅模式
     this.subs.push(watcher)
   }
   notify(){ // 发布
+    console.log();
+    
     this.subs.forEach(watcher => watcher.update())
   }
   depend(){

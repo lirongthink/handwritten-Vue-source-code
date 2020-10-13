@@ -13,7 +13,6 @@ const sharedPropertyDefinition = {
 }
 
 export function proxy(vm,source,key) { //代理数据  vm.msg = vm._data.msg
-  console.log(key)
   Object.defineProperty(vm,key,{
     get(){
       return vm[source][key]

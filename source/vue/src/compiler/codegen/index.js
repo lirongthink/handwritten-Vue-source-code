@@ -118,14 +118,17 @@ function genDirectives(el, state) {
   let res = 'directives:['
   let hasRuntime = false
   let i, l, dir, needRuntime
+  // 循环指令列表
   for (i = 0, l = dirs.length; i < l; i++) {
+    // 取出指令
     dir = dirs[i]
     needRuntime = true
-    
+    // 编译成代码串
     const gen = state.directives[dir.name]
     if (gen) {
       needRuntime = !!gen(el, dir, state.warn)
     }
+    // 合成一个对象
     if (needRuntime) {
       hasRuntime = true
       res += `{name:"${dir.name}",rawName:"${dir.rawName}"${
@@ -172,7 +175,7 @@ function genStatic (el, state) {
 
 export function genData(el, state) {
   let data = '{'
-  //对指令的处理
+  //对指令的处理 包含 v-model
   const dirs = genDirectives(el, state)
   if (dirs) data += dirs + ','
 
@@ -214,19 +217,28 @@ export function genData(el, state) {
     data += `${genHandlers(el.nativeEvents, true)}`
   }
 
+  // 对组件的 v-model进行一个处理 即genComponentModel中创建的el.model
+  if (el.model) {
+    data += `model:{value:${
+      el.model.value
+    },callback:${
+      el.model.callback
+    },expression:${
+      el.model.expression
+    }},`
+  }
+
+
   data = data.replace(/,$/, '') + '}'
 
   // 将对象中的v-bind指令用render函数进行包裹
   if (el.wrapData) {
     data = el.wrapData(data)
-  console.log(data,'data');
 
   }
   // 将对象中的v-on指令用render函数进行包裹
   if (el.wrapListeners) {
     data = el.wrapListeners(data)
-  console.log(data,'data');
-
   }
   return data
 }

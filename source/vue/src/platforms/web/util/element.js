@@ -40,3 +40,4 @@ export function getTagNamespace (tag) {
     return 'math'
   }
 }
+export const isTextInputType = makeMap('text,number,password,search,email,tel,url')

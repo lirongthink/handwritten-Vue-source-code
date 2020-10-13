@@ -1,14 +1,22 @@
 import { renderStatic } from './render-static'
 import { createTextVNode, createEmptyVNode } from '../../vdom/vnode';
-import { toString } from '../../../shared/util';
+import { toString, toNumber, looseEqual, looseIndexOf } from '../../../shared/util';
 import { bindObjectProps } from './bind-object-props';
 import { bindObjectListeners } from './bind-object-listeners';
+import { resolveFilter } from './resolve-filter';
+import { checkKeyCodes } from './check-keycodes';
 
 export function installRenderHelpers (target) {
+  target._n = toNumber
   target._s = toString
+  target._q = looseEqual
+  target._i = looseIndexOf
   target._m = renderStatic
+  target._f = resolveFilter
+  target._k = checkKeyCodes
   target._b = bindObjectProps
   target._v = createTextVNode
   target._e = createEmptyVNode
   target._g = bindObjectListeners
+  
 }

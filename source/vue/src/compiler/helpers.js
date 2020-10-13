@@ -24,7 +24,7 @@ export function pluckModuleFunction (modules, key){
 }
 
 export function addDirective(el, name, rawName, value, arg, modifiers, range) {
-  (el.directive || (el.directive = [])).push(rangeSetItem({ name, rawName, value, arg, modifiers }, range))
+  (el.directives || (el.directives = [])).push(rangeSetItem({ name, rawName, value, arg, modifiers }, range))
   el.plain = false
 }
 

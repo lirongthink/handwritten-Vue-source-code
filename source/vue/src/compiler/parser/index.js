@@ -109,7 +109,6 @@ function processAttrs(el) {
       } else {// 正常指令 如v-model
         // 截掉指令
         name = name.replace(dirRE, '')
-
         const argMatch = name.match(argRE)
         const arg = argMatch && argMatch[1]
 

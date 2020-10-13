@@ -3,7 +3,12 @@ let pending = false
 
 
 function flushCallbacks() {
-  callbacks.forEach(cb => cb())
+  pending = false
+  const copies = callbacks.slice(0)
+  callbacks.length = 0
+  for (let i = 0; i < copies.length; i++) {
+    copies[i]()
+  }
 }
 
 //要异步刷新这个callbacks，获取一个异步的方法
