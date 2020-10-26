@@ -200,13 +200,3 @@ export function toObject (arr) {
 export function isObject (obj) {
   return obj !== null && typeof obj === 'object'
 }
-
-export function once(fn) {
-  let called = false
-  return function () {
-    if (!called) {
-      called = true
-      fn.apply(this, arguments)
-    }
-  }
-}

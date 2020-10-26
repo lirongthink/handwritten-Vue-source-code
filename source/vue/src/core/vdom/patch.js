@@ -85,7 +85,7 @@ export function createPatchFunction(backend) {
     // 获取它的父节点
     const parent = nodeOps.parentNode(el)
     if (isDef(parent)) {
-      nodeOps.removeChild(parent.el)
+      nodeOps.removeChild(parent, el)
     }
   }
 
@@ -95,6 +95,7 @@ export function createPatchFunction(backend) {
     // 执行destroy 钩子
     if (isDef(data)) {
       if (isDef(i = data.hook) && isDef(i = i.destroy)) i(vnode)
+      for (i = 0; i < cbs.destroy.length; ++i) cbs.destroy[i](vnode)
     }
     //如果有子vnode 递归调用
     if (isDef(i = vnode.children)) {
@@ -109,15 +110,51 @@ export function createPatchFunction(backend) {
       const ch = vnodes[startIdx]
       if (isDef(ch)) {
         if (!isDef(ch.tag)) {
-          // removeAndInvokeRemoveHook(ch)
+          removeAndInvokeRemoveHook(ch)
           //调用destroy钩子函数
-        //   invokeDestroyHook(ch)
-        // } else {
+          invokeDestroyHook(ch)
+        } else {
           removeNode(ch.elm)
         }
       }
     }
   }
+
+  function createRmCb (childElm, listeners) {
+    function remove () {
+      if (--remove.listeners === 0) {
+        removeNode(childElm)
+      }
+    }
+    remove.listeners = listeners
+    return remove
+  }
+
+  function removeAndInvokeRemoveHook (vnode, rm) {
+    if (isDef(rm) || isDef(vnode.data)) {
+      let i
+      const listeners = cbs.remove.length + 1
+      if (isDef(rm)) {
+        rm.listeners += listeners
+      } else {
+        rm = createRmCb(vnode.elm, listeners)
+      }
+      if (isDef(i = vnode.componentInstance) && isDef(i = i._vnode) && isDef(i.data)) {
+        removeAndInvokeRemoveHook(i, rm)
+      }
+      for (i = 0; i < cbs.remove.length; ++i) {
+        cbs.remove[i](vnode, rm)
+      }
+      if (isDef(i = vnode.data.hook) && isDef(i = i.remove)) {
+        i(vnode, rm)
+      } else {
+        rm()
+      }
+    } else {
+      removeNode(vnode.elm)
+    }
+  }
+
 
   function invokeCreateHooks (vnode, insertedVnodeQueue) {
     // 循环调用create钩子函数
@@ -142,21 +179,31 @@ export function createPatchFunction(backend) {
   function createComponent(vnode,insertedVnodeQueue, parentElm, refElm) {
     let i = vnode.data
     if (isDef(i)) {
+      // keep-alive第二次调用componentInstance有值 且keepAlive为true
+      const isReactivated = isDef(vnode.componentInstance) && i.keepAlive
       // 判断是否有钩子函数  而且是否有init 如果有就执行init
       if (isDef(i = i.hook) && isDef(i = i.init)) {
+        // 第一次创建执行init钩子
         i(vnode, false)
       }
     }
-
+    // keep-alive组件第一次创建是没有componentInstance的
+    // 第二次已经有了
     if (isDef(vnode.componentInstance)) {
       initComponent(vnode, insertedVnodeQueue)
       insert(parentElm, vnode.elm, refElm)
-
+      // keep-alive第二次调用上面已经为true
+      // if (isTrue(isReactivated)) {
+      //   reactivateComponent(vnode, insertedVnodeQueue, parentElm, refElm)
+      // }
       return true
     }
   }
 
   function initComponent(vnode, insertedVnodeQueue) {
+    
+    // 直接拿到已经渲染过的keep-live组件的元素节点
+    vnode.elm = vnode.componentInstance.$el
     if (isPatchable(vnode)) {
       invokeCreateHooks(vnode, insertedVnodeQueue)
     } else {
@@ -332,6 +379,13 @@ export function createPatchFunction(backend) {
     }
   }
 
+  function isPatchable (vnode) {
+    while (vnode.componentInstance) {
+      vnode = vnode.componentInstance._vnode
+    }
+    return isDef(vnode.tag)
+  }
+
   //将真实DOM转换成VNode
   function emptyNodeAt(elm) {
     return new VNode(nodeOps.tagName(elm).toLowerCase(), {}, [], undefined, elm)
@@ -359,9 +413,36 @@ export function createPatchFunction(backend) {
 
         //创建真实DOM并将VNode挂载上去
         createElm(vnode, insertedVnodeQueue, parentElm)
+
+        if (isDef(vnode.parent)) {
+          let ancestor = vnode.parent
+          const patchable = isPatchable(vnode)
+          while (ancestor) {
+            for (let i = 0; i < cbs.destroy.length; ++i) {
+              cbs.destroy[i](ancestor)
+            }
+            ancestor.elm = vnode.elm
+            if (patchable) {
+              for (let i = 0; i < cbs.create.length; ++i) {
+                cbs.create[i](emptyNode, ancestor)
+              }
+              
+              const insert = ancestor.data.hook.insert
+              if (insert.merged) {
+                for (let i = 1; i < insert.fns.length; i++) {
+                  insert.fns[i]()
+                }
+              }
+            }
+            ancestor = ancestor.parent
+          }
+        }
+
         // 移除旧的节点
         if (isDef(parentElm)) {
           removeVnodes(parentElm, [oldVnode], 0, 0)
+        } else if (isDef(oldVnode.tag)) {
+          invokeDestroyHook(oldVnode)
         }
       }
     }

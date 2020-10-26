@@ -1,4 +1,6 @@
 import { ASSET_TYPES } from "../../shared/constants";
+import { extend } from "../../shared/util";
+import { mergeOptions } from "../utils/options";
 
 export function initExtend(Vue) {
   Vue.cid = 0
@@ -15,8 +17,6 @@ export function initExtend(Vue) {
 
     //获取组件的名称
     const name = extendOptions.name || Super.options.name
-    // //检查名称是否合法
-    // validateComponentName(name)
 
     // 创建构造函数
     const Sub = function VueComponent(options) {
@@ -28,6 +28,12 @@ export function initExtend(Vue) {
     Sub.prototype.constructor = Sub
 
     Sub.cid = cid++
+
+    Sub.options = mergeOptions(
+      Super.options,
+      extendOptions
+    )
+
     Sub['super'] = Super
 
     // 将全局静态方法进行挂载

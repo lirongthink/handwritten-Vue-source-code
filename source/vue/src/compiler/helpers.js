@@ -1,4 +1,5 @@
 import { emptyObject } from "../shared/util";
+import { parseFilters } from "./parser/filter-parser";
 
 export function getAndRemoveAttr(el, name, removeFromMap) {
   let val
@@ -41,6 +42,12 @@ export function addAttr (el, name, value, range) {
 export function addRawAttr(el, name, value, range) {
   el.attrsMap[name] = value
   el.attrsList.push(rangeSetItem({ name, value }, range))
+}
+
+export function getRawBindingAttr (el, name) {
+  return el.rawAttrsMap[':' + name] ||
+    el.rawAttrsMap['v-bind:' + name] ||
+    el.rawAttrsMap[name]
 }
 
 /**

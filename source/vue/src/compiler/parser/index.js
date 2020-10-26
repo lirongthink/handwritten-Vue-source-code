@@ -1,7 +1,7 @@
 import he from 'he'
 import { parseHTML } from "./html-parser";
-import { extend, camelize } from "../../shared/util";
-import { getAndRemoveAttr, getBindingAttr, pluckModuleFunction, addHandler, addDirective, addAttr, addProp } from "../helpers";
+import { extend, camelize, hasOwn } from "../../shared/util";
+import { getAndRemoveAttr, getBindingAttr, pluckModuleFunction, addHandler, addDirective, addAttr, addProp, getRawBindingAttr } from "../helpers";
 import { parseText } from "./text-parser";
 import { parseFilters } from './filter-parser';
 
@@ -25,12 +25,9 @@ let transforms
 let platformIsPreTag
 let postTransforms
 let platformMustUseProp
+let maybeComponent
 
-const stack = []
-let root
-let currentParent
-let inVPre = false
-let inPre = false
+
 let delimiters
 
 function makeAttrsMap (attrs) {
@@ -130,6 +127,90 @@ function processAttrs(el) {
   }
 }
 
+function processSlot (el) {
+  // slot标签 说明是在子组件中
+  if (el.tag === 'slot') {
+    // 如果是具名插槽 取出插槽名
+    el.slotName = getBindingAttr(el, 'name')
+  } else { // 这里是对作用域插槽的解析
+    let slotScope
+    if (el.tag === 'template') {
+      // 兼容老版本
+      slotScope = getAndRemoveAttr(el, 'scope')
+      // 赋值到el上 以便后面使用
+      el.slotScope = slotScope || getAndRemoveAttr(el, 'slot-scope')
+    } else if ((slotScope = getAndRemoveAttr(el, 'slot-scope'))) { // 普通节点下  非tempalte
+      el.slotScope = slotScope
+    } else { // 对 $slot的处理
+      if (maybeComponent(el) && childrenHas$Slot(el)) {
+        // 如果子组件有slot  就去解析父组件的scope
+        processScopedSlots(el)
+      }
+    }
+    const slotTarget = getBindingAttr(el, 'slot')
+    if (slotTarget) {
+      // 如果不是具名插槽设置成defalut
+      el.slotTarget = slotTarget === '""' ? '"default"' : slotTarget
+      // 如果为子组件 添加slot属性
+      if (el.tag !== 'template' && !el.slotScope && !nodeHas$Slot(el)) {
+        addAttr(el, 'slot', slotTarget, getRawBindingAttr(el, 'slot'))
+      }
+    }
+  }
+}
+function childrenHas$Slot(el) {
+  // 如果有子组件  如果有一个子节点有slot 就返回true 否则返回false
+  return el.children ? el.children.some(nodeHas$Slot) : false
+}
+
+const $slotRE = /(^|[^\w_$])\$slot($|[^\w_$])/
+function nodeHas$Slot (node) {
+  if (hasOwn(node, 'has$Slot')) {
+    // 标识是否有$slot
+    return node.has$Slot
+  }
+  if (node.type === 1) { // 是一个元素节点
+    for (const key in node.attrsMap) {
+      // 是一个指令  而且在属性集中是$slot属性
+      if (dirRE.test(key) &&  $slotRE.test(node.attrsMap[key])) {
+        // 将它的has$Slot设置为true 并直接返回
+        return (node.has$Slot = true)
+      }
+    }
+    // 检测子组件
+    return (node.has$Slot = childrenHas$Slot(node))
+  } else if (node.type === 2) { // 节点为属性节点
+    return (node.has$Slot = $slotRE.test(node.expression))
+  }
+  return false
+}
+
+function processScopedSlots(el) {
+  const groups = {}
+  for (let i = 0; i < el.children.length; i++) {
+    // 拿出子组件
+    const child = el.children[i]
+    const target = child.slotTarget || 'default'
+    // 如果没有当前插槽
+    if (!groups[target]) {
+      groups[target] = []
+    }
+    // 将组件放进插槽数组中 以便返回给用户
+    groups[target].push(child)
+  }
+  for (const name in groups) {
+    const group = groups[name]
+    if (group.some(nodeHas$Slot)) {
+      el.plain = false
+      const slots = el.scopedSlots || (el.scopedSlots = {})
+      const slotContainer = slots[name] = createASTElement('template', [], el)
+      slotContainer.children = group
+      slotContainer.slotScope = '$slot'
+      el.children = el.children.filter(c => group.indexOf(c) === -1)
+    }
+  }
+}
+
 function parseModifiers(name) {
   // 捕获修饰符
   const match = name.match(modifierRE)
@@ -142,13 +223,22 @@ function parseModifiers(name) {
 }
 
 export function parse(template, options) {
-
+  const preserveWhitespace = options.preserveWhitespace !== false
   transforms = pluckModuleFunction(options.modules, 'transformNode')
   postTransforms = pluckModuleFunction(options.modules, 'postTransformNode')
   platformIsPreTag = options.isPreTag || (() => false)
   platformMustUseProp = options.mustUseProp || (() => false)
+  const isReservedTag = options.isReservedTag || (() => false)
+  maybeComponent = (el) => !!el.component || !isReservedTag(el.tag)
   const whitespaceOption = options.whitespace
   delimiters = options.delimiters
+
+  const stack = []
+  let root
+  let currentParent
+  let inVPre = false
+  let inPre = false
+
   function closeElement (element) {
     if (!inVPre) {
       element = processElement(element, options)
@@ -165,7 +255,13 @@ export function parse(template, options) {
     if (currentParent && !element.forbidden) {
       if (element.elseif || element.else) {
         processIfConditions(element, currentParent)
+      } else if (element.slotScope) { // 如果是作用域插槽
+        // 拿到插槽名
+        const name = element.slotTarget || '"default"';
+        // 根据插槽名作为键 将作用于插槽的元素放入到父节点的scopedSlots对象中
+        (currentParent.scopedSlots || (currentParent.scopedSlots = {}))[name] = element
       } else {
+        // 将AST放入到父节点的children中
         currentParent.children.push(element)
         element.parent = currentParent
       }
@@ -364,6 +460,8 @@ export function processElement (element, options) {
   element.plain = (!element.key && !element.attrsList.length)
 
   processRef(element)
+  // 对插槽的处理
+  processSlot(element)
   processComponent(element)
   for (let i = 0; i < transforms.length; i++) {
     element = transforms[i](element, options) || element

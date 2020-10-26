@@ -1,5 +1,5 @@
 import { camelize, hasOwn, isPlainObject, extend, capitalize } from "../../shared/util";
-import { LIFECYCLE_HOOKS, ASSET_TYPES } from "../../shared/constants copy";
+import { LIFECYCLE_HOOKS, ASSET_TYPES } from "../../shared/constants";
 import { set } from "../observer";
 
 const strats = Object.create(null)

@@ -5,8 +5,12 @@ import { remove } from "../../shared/util";
 
 let id = 0 //保证watcher唯一
 class Watcher {
-  constructor(vm,exprOrFn,cb = () =>{},opts = {}){
+  constructor(vm,exprOrFn,cb = () =>{},opts = {},isRenderWatcher){
     this.vm = vm
+    if (isRenderWatcher) {
+      vm._watcher = this
+    }
+    vm._watchers.push(this)
     this.exprOrFn = exprOrFn
     this.cb = cb
     this.deps = []

@@ -66,7 +66,6 @@ export function defineReactive(obj,key,value) {
     set(newValue){
       if (newValue === value) return
       value = newValue
-      debugger
       childOb = observe(newValue)
       dep.notify()
     }

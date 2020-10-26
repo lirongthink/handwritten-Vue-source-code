@@ -1,4 +1,7 @@
 import { nextTick } from "../utils/next-tick";
+import { callHook } from "../instance/lifecycle";
+
+const activatedChildren = []
 
 let has = {}
 let queue = []
@@ -32,11 +35,68 @@ function flushSchedulerQueue() {
     //调用watcher的run函数
     watcher.run()
   }
-
+  // 复制队列副本
+  // keep-alive组件的队列
+  const activatedQueue = activatedChildren.slice()
+  const updatedQueue = queue.slice()
   //重置这些状态参数
   resetSchedulerState()
+
+  callActivatedHooks(activatedQueue)
+  callUpdatedHooks(updatedQueue)
 }
 
+function callActivatedHooks (queue) {
+  // 循环队列调用activateChildComponent函数
+  for (let i = 0; i < queue.length; i++) {
+    queue[i]._inactive = true
+    activateChildComponent(queue[i], true)
+  }
+}
+
+function callUpdatedHooks (queue) {
+  let i = queue.length
+  while (i--) {
+    const watcher = queue[i]
+    const vm = watcher.vm
+    // 已经挂载 且没有销毁 链接无错误 调用updated钩子
+    if (vm._watcher === watcher && vm._isMounted && !vm._isDestroyed) {
+      callHook(vm, 'updated')
+    }
+  }
+}
+
+export function queueActivatedComponent (vm) {
+  vm._inactive = false
+  // 将组件插入队列
+  activatedChildren.push(vm)
+}
+
+function isInInactiveTree (vm) {
+  while (vm && (vm = vm.$parent)) {
+    if (vm._inactive) return true
+  }
+  return false
+}
+
+
+export function activateChildComponent (vm, direct) {
+  if (direct) {
+    vm._directInactive = false
+    if (isInInactiveTree(vm)) {
+      return
+    }
+  } else if (vm._directInactive) {
+    return
+  }
+  if (vm._inactive || vm._inactive === null) {
+    vm._inactive = false
+    for (let i = 0; i < vm.$children.length; i++) {
+      activateChildComponent(vm.$children[i])
+    }
+    callHook(vm, 'activated')
+  }
+}
 
 export function queueWatcher(watcher) { //对重复的watcher进行过滤操作
   let id = watcher.id

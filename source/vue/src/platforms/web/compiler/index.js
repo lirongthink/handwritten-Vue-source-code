@@ -19,6 +19,7 @@ const baseOptions = {
   staticKeys: genStaticKeys(modules),
   modules,
   expectHTML: true,
+  preserveWhitespace: false,
   isPreTag,
   directives,
   isUnaryTag,

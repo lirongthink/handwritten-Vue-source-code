@@ -1,7 +1,7 @@
 import { pluckModuleFunction } from "../helpers"
 import baseDirectives from '../directives/index'
 import { genHandlers } from "./events";
-import { extend } from "../../shared/util";
+import { extend, camelize } from "../../shared/util";
 
 export class CodegenState {
   constructor(options) {
@@ -32,6 +32,8 @@ export function genElement(el, state) {
   }
   if (el.staticRoot && !el.staticProcessed) {
     return genStatic(el, state)
+  } else if (el.tag === 'slot') {
+    return genSlot(el, state)
   } else {
     let code
     //如果是组件
@@ -156,6 +158,49 @@ export function genComment (comment) {
   return `_e(${JSON.stringify(comment.text)})`
 }
 
+function genSlot(el, state) {
+  // 格式化插槽名
+  const slotName = el.slotName || '"default"'
+  // 解析出子节点 即插槽默认的内容
+  const children = genChildren(el, state)
+  // 拼接代码串
+  let res = `_t(${slotName}${children ? `,${children}` : ''}`
+  // 拿出属性列表
+  const attrs = el.attrs && `{${el.attrs.map(a => `${camelize(a.name)}:${a.value}`).join(',')}}`
+  const bind = el.attrsMap['v-bind']
+  if ((attrs || bind) && !children) {
+    res += `,null`
+  }
+  if (attrs) {
+    res += `,${attrs}`
+  }
+  if (bind) {
+    res += `${attrs ? '' : ',null'},${bind}`
+  }
+  return res + ')'
+}
+
+function genScopedSlots (slots, state) {
+  // 返回一个代码串
+  return `scopedSlots:_u([${
+    Object.keys(slots).map(key => {
+      return genScopedSlot(key, slots[key], state)
+    }).join(',')
+  }])`
+}
+
+function genScopedSlot(key, el, state) {
+  // 这里将el.slotScope作为函数参数传入  就可以在父节点访问子节点的作用域
+  const fn = `function(${String(el.slotScope)}){` +
+    `return ${el.tag === 'template'
+      ? el.if
+        ? `(${el.if})?${genChildren(el, state) || 'undefined'}:undefined`
+        : genChildren(el, state) || 'undefined'
+      : genElement(el, state)
+    }}`
+  return `{key:${key},fn:${fn}}`
+}
+
 function genStatic (el, state) {
   // 标记设置为true 防止造成死循环
   el.staticProcessed = true
@@ -215,6 +260,15 @@ export function genData(el, state) {
   }
   if (el.nativeEvents) { // 对原生DOM事件的处理
     data += `${genHandlers(el.nativeEvents, true)}`
+  }
+  // 对普通插槽的处理
+  if (el.slotTarget && !el.slotScope) {
+    data += `slot:${el.slotTarget},`
+  }
+  
+  // 对作用域插槽的处理
+  if (el.scopedSlots) {
+    data += `${genScopedSlots(el.scopedSlots, state)},`
   }
 
   // 对组件的 v-model进行一个处理 即genComponentModel中创建的el.model

@@ -1,25 +1,13 @@
-import { isUndef, emptyObject } from "../../shared/util";
+import { isUndef } from "../../shared/util";
 import VNode from "./vnode";
-import { callHook, updateChildComponent, activateChildComponent, deactivateChildComponent } from "../instance/lifecycle";
+import { callHook } from "../instance/lifecycle";
 import { isObject } from "../utils";
-import { queueActivatedComponent } from "../observer/scheduler";
 
 const componentVNodeHooks = {
   init(vnode){
-    if (
-      vnode.componentInstance &&
-      !vnode.componentInstance._isDestroyed &&
-      vnode.data.keepAlive
-    ) { // keep-alive 组件 不为首次创建
-      const mountedNode = vnode
-      // 不会再次创建  执行prepatch
-      componentVNodeHooks.prepatch(mountedNode, mountedNode)
-    } else { //keep-alive组件 第一次创建也走这里
-      const child = vnode.componentInstance = createComponentInstanceForVnode(vnode)
-      //手动调用mount
-      // keep-alive组件在这里会调用redner函数
-      child.$mount(undefined)
-    }
+    const child = vnode.componentInstance = createComponentInstanceForVnode(vnode)
+    //手动调用mount
+    child.$mount(undefined)
   },
   insert(vnode){
     const { context, componentInstance } = vnode
@@ -27,15 +15,6 @@ const componentVNodeHooks = {
     if (!componentInstance._isMounted ) {
       componentInstance._isMounted = true
       callHook(componentInstance, 'mounted')
-    }
-    // 命中keep-alive
-    if (vnode.data.keepAlive) {
-      // 已经挂载的keep-alive组件可能会出错  这里做一个处理
-      if (context._isMounted) {
-        queueActivatedComponent(componentInstance)
-      } else {
-        activateChildComponent(componentInstance, true)
-      }
     }
   },
   prepatch(oldVnode, vnode){
@@ -45,17 +24,16 @@ const componentVNodeHooks = {
     const child = vnode.componentInstance = oldVnode.componentInstance
     updateChildComponent(child, options.propsData, options.listeners, vnode, options.children)
   },
-  destroy () {
-    const { componentInstance } = vnode
-    if (!componentInstance._isDestroyed) {
-      // 普通组件直接调用destory
-      if (!vnode.data.keepAlive) {
-        componentInstance.$destroy()
-      } else { // keep-alive 调用deactivateChildComponent
-        deactivateChildComponent(componentInstance, true /* direct */)
-      }
-    }
-  }
+  // destroy () {
+  //   const { componentInstance } = vnode
+  //   if (!componentInstance._isDestroyed) {
+  //     if (!vnode.data.keepAlive) {
+  //       componentInstance.$destroy()
+  //     } else {
+  //       deactivateChildComponent(componentInstance, true /* direct */)
+  //     }
+  //   }
+  // }
   
 }
 
@@ -63,15 +41,18 @@ const hooksToMerge = Object.keys(componentVNodeHooks)
 
 export function createComponent(Ctor, data, context, children, tag) {
   // 如果没有构造函数 即不是一个组件
-  if (isUndef(Ctor)) {
+  if (isUndef(Cotr)) {
     return 
   }
+
   //取出Vue实例
   const baseCtor = context.$options._base
+
   //如果传入的是对象,则转换成一个组件的构造器
   if (isObject(Ctor)) {
     Ctor = baseCtor.extend(Ctor)
   }
+
   data = data || {}
 
   // 这里存储一下组件的自定义事件
@@ -81,6 +62,7 @@ export function createComponent(Ctor, data, context, children, tag) {
   data.on = data.nativeOn
   //安装组件的钩子
   installComponentHooks(data)
+
   const name = Ctor.options.name || tag
   //创建VNode
   const vnode = new VNode(
@@ -121,5 +103,5 @@ export function createComponentInstanceForVnode(vnode, parent) {
     parent
   }
   // 调用该组件通过extend生成的构造器
-  return new vnode.componentOptions.Ctor(options)
+  return new vnode.componentOptions.Cotr(options)
 }

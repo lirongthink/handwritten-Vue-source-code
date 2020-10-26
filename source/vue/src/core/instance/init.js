@@ -34,17 +34,11 @@ export function initMixin(Vue) {
     }
 
   }
-
-  Vue.prototype.$watch = function (expr,handler,opts) {
-    //原理也是创建一个watcher
-    let vm = this
-    new Watcher(vm,expr,handler,{ user:true,...opts }) // 表示用户自己定义的watch
-  }
 }
 
 export function initInternalComponent(vm, options) {
   const opts = vm.$options = Object.create(vm.constructor.options)
-
+  // 子组件的构造函数中传入的options中的
   const parentVnode = options._parentVnode
   opts.parent = options.parent
   opts._parentVnode = parentVnode

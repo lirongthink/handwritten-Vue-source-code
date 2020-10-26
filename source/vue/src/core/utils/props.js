@@ -47,7 +47,7 @@ function getPropDefaultValue(vm, prop, key) {
 }
 
 function isSameType(a, b) {
-  return getTypeIndex(a) === getType(b)
+  return getType(a) === getType(b)
 }
 
 /**
@@ -59,7 +59,7 @@ function getTypeIndex(type, expectedTypes) {
   if (!Array.isArray(expectedTypes)) {
     return isSameType(expectedTypes,type) ? 0 : -1
   }
-  for (let i = 0; i < expectedTypes.length; i++) {
+  for (let i = 0,len = expectedTypes.length; i < len; i++) {
     if (isSameType(expectedTypes[i], type)) {
       return i
     }

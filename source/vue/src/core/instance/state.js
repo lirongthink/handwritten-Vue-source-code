@@ -25,6 +25,7 @@ export function proxy(vm,source,key) { //代理数据  vm.msg = vm._data.msg
 }
 
 export function initState(vm) {
+  vm._watchers = []
   //做不同的初始化工作
   const opts = vm.$options
 
